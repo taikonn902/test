@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+        }
+        .btn-glow {
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(167, 119, 227, 0.5);
+        }
+        .btn-glow:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 25px rgba(167, 119, 227, 0.8);
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(167, 119, 227, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(167, 119, 227, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(167, 119, 227, 0);
+            }
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="max-w-2xl w-full bg-white rounded-xl shadow-2xl overflow-hidden">
+        <!-- Header -->
+        <div class="bg-purple-600 text-white p-6 text-center">
+            <h1 class="text-3xl font-bold">Location Tracker</h1>
+            <p class="mt-2">Tạo liên kết theo dõi vị trí chỉ với 1 cú nhấp chuột</p>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="p-6">
+            <!-- Generate Link Section -->
+            <div id="generateSection" class="mb-8">
+                <h2 class="text-xl font-semibold mb-4 text-purple-800">Tạo liên kết theo dõi</h2>
+                <button id="generateBtn" class="btn-glow bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg w-full transition-all duration-300">
+                    Tạo Liên Kết
+                </button>
+                <div id="linkContainer" class="mt-4 hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Liên kết của bạn:</label>
+                    <div class="flex">
+                        <input id="generatedLink" type="text" class="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-purple-400" readonly>
+                        <button id="copyBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-r-lg">
+                            Sao chép
+                        </button>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-500">Gửi liên kết này cho người bạn muốn theo dõi</p>
+                </div>
+            </div>
+            
+            <!-- Track Results Section -->
+            <div id="trackSection">
+                <h2 class="text-xl font-semibold mb-4 text-purple-800">Kết quả theo dõi</h2>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div id="noResults" class="text-center py-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p class="mt-2 text-gray-600">Chưa có dữ liệu vị trí nào được gửi</p>
+                    </div>
+                    <div id="resultsContainer" class="hidden">
+                        <div class="overflow-y-auto max-h-64">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thời gian</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vị trí</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khoảng cách</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resultsTable" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-6 text-white text-sm">
+        <p>Location Tracker - Theo dõi vị trí một cách đơn giản</p>
+    </div>
+
+    <script>
+        // Simple storage using localStorage (for demo purposes)
+        // In a real app, you would use a backend database
+        const storageKey = 'locationTrackerLinks';
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            const generateBtn = document.getElementById('generateBtn');
+            const copyBtn = document.getElementById('copyBtn');
+            const generatedLink = document.getElementById('generatedLink');
+            const linkContainer = document.getElementById('linkContainer');
+            const noResults = document.getElementById('noResults');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const resultsTable = document.getElementById('resultsTable');
+            
+            // Load any existing links and results
+            loadResults();
+            
+            // Generate tracking link
+            generateBtn.addEventListener('click', function() {
+                // Create a unique ID for this tracking session
+                const trackingId = 'track-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+                
+                // Save to localStorage
+                const links = JSON.parse(localStorage.getItem(storageKey)) || {};
+                links[trackingId] = { 
+                    createdAt: new Date().toISOString(), 
+                    locations: [] 
+                };
+                localStorage.setItem(storageKey, JSON.stringify(links));
+                
+                // Generate the tracking URL
+                const url = new URL(window.location.href);
+                url.searchParams.set('track', trackingId);
+                
+                // Display the link
+                generatedLink.value = url.toString();
+                linkContainer.classList.remove('hidden');
+                
+                // Pulse animation for attention
+                generateBtn.classList.add('pulse');
+                setTimeout(() => generateBtn.classList.remove('pulse'), 2000);
+            });
+            
+            // Copy link to clipboard
+            copyBtn.addEventListener('click', function() {
+                generatedLink.select();
+                document.execCommand('copy');
+                
+                // Change button text temporarily
+                copyBtn.textContent = 'Đã sao chép!';
+                setTimeout(() => {
+                    copyBtn.textContent = 'Sao chép';
+                }, 2000);
+            });
+            
+            // Check if this is a tracking URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const trackingId = urlParams.get('track');
+            
+            if (trackingId) {
+                // Hide the generate section
+                document.getElementById('generateSection').classList.add('hidden');
+                document.getElementById('trackSection').classList.add('hidden');
+                
+                // Show loading message
+                document.body.innerHTML = `
+                    <div class="flex flex-col items-center justify-center min-h-screen text-white">
+                        <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-white mb-4"></div>
+                        <h2 class="text-xl font-semibold mb-2">Đang lấy vị trí của bạn...</h2>
+                        <p class="text-center max-w-md">Vui lòng cho phép truy cập vị trí để chia sẻ với người gửi liên kết này.</p>
+                    </div>
+                `;
+                
+                // Get current location
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        // Successfully got location
+                        const { latitude, longitude } = position.coords;
+                        
+                        // Save location to tracking session
+                        const links = JSON.parse(localStorage.getItem(storageKey)) || {};
+                        if (links[trackingId]) {
+                            links[trackingId].locations.push({
+                                timestamp: new Date().toISOString(),
+                                latitude,
+                                longitude,
+                                accuracy: position.coords.accuracy
+                            });
+                            localStorage.setItem(storageKey, JSON.stringify(links));
+                        }
+                        
+                        // Show success message
+                        document.body.innerHTML = `
+                            <div class="flex flex-col items-center justify-center min-h-screen text-white">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-green-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                <h2 class="text-xl font-semibold mb-2">Vị trí đã được gửi!</h2>
+                                <p class="text-center max-w-md">Vị trí của bạn đã được chia sẻ với người gửi liên kết. Bạn có thể đóng trang này.</p>
+                            </div>
+                        `;
+                    },
+                    function(error) {
+                        // Failed to get location
+                        let errorMessage = "Không thể lấy vị trí của bạn.";
+                        
+                        if (error.code === error.PERMISSION_DENIED) {
+                            errorMessage = "Bạn đã từ chối chia sẻ vị trí.";
+                        } else if (error.code === error.POSITION_UNAVAILABLE) {
+                            errorMessage = "Không thể xác định vị trí của bạn.";
+                        } else if (error.code === error.TIMEOUT) {
+                            errorMessage = "Yêu cầu lấy vị trí đã hết thời gian chờ.";
+                        }
+                        
+                        document.body.innerHTML = `
+                            <div class="flex flex-col items-center justify-center min-h-screen text-white">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <h2 class="text-xl font-semibold mb-2">Có lỗi xảy ra</h2>
+                                <p class="text-center max-w-md">${errorMessage}</p>
+                                <button onclick="window.location.href='${window.location.origin}${window.location.pathname}'" class="mt-4 px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-gray-100 transition">
+                                    Quay lại trang chính
+                                </button>
+                            </div>
+                        `;
+                    }
+                );
+            }
+            
+            // Function to load and display tracking results
+            function loadResults() {
+                const links = JSON.parse(localStorage.getItem(storageKey)) || {};
+                let hasResults = false;
+                
+                // Clear previous results
+                resultsTable.innerHTML = '';
+                
+                // Process each tracking session
+                for (const [id, data] of Object.entries(links)) {
+                    if (data.locations && data.locations.length > 0) {
+                        hasResults = true;
+                        
+                        // Add each location to the table
+                        data.locations.forEach(loc => {
+                            const row = document.createElement('tr');
+                            
+                            // Format timestamp
+                            const date = new Date(loc.timestamp);
+                            const timeStr = date.toLocaleTimeString();
+                            const dateStr = date.toLocaleDateString();
+                            
+                            // Create map link
+                            const mapUrl = `https://www.google.com/maps?q=${loc.latitude},${loc.longitude}`;
+                            
+                            // Calculate distance (simplified - assumes first location is reference)
+                            let distance = 'N/A';
+                            if (data.locations.length > 1) {
+                                const firstLoc = data.locations[0];
+                                distance = calculateDistance(
+                                    firstLoc.latitude, 
+                                    firstLoc.longitude,
+                                    loc.latitude,
+                                    loc.longitude
+                                ).toFixed(2) + ' km';
+                            }
+                            
+                            row.innerHTML = `
+                                <td class="px-4 py-2 whitespace-nowrap">${dateStr} ${timeStr}</td>
+                                <td class="px-4 py-2 whitespace-nowrap">
+                                    <a href="${mapUrl}" target="_blank" class="text-purple-600 hover:text-purple-800 hover:underline">
+                                        Xem trên bản đồ
+                                    </a>
+                                </td>
+                                <td class="px-4 py-2 whitespace-nowrap">${distance}</td>
+                            `;
+                            resultsTable.appendChild(row);
+                        });
+                    }
+                }
+                
+                // Show appropriate UI based on results
+                if (hasResults) {
+                    noResults.classList.add('hidden');
+                    resultsContainer.classList.remove('hidden');
+                } else {
+                    noResults.classList.remove('hidden');
+                    resultsContainer.classList.add('hidden');
+                }
+            }
+            
+            // Helper function to calculate distance between coordinates (Haversine formula)
+            function calculateDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371; // Radius of the Earth in km
+                const dLat = deg2rad(lat2 - lat1);
+                const dLon = deg2rad(lon2 - lon1);
+                const a = 
+                    Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c; // Distance in km
+            }
+            
+            function deg2rad(deg) {
+                return deg * (Math.PI/180);
+            }
+        });
+    </script>
+</body>
+</html>
